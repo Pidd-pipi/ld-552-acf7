@@ -9,14 +9,15 @@ export class AuditLogInterceptor implements NestInterceptor {
     const req = context.switchToHttp().getRequest();
     const beforeStatus = req.body?.beforeStatus;
     const afterStatus = req.body?.status ?? req.body?.result;
-    return next.handle().pipe(tap(async (payload: any) => {
+    return next.handle().pipe(tap((payload: any) => {
       const entity = this.detectEntity(req.path);
       if (!entity || !afterStatus) return;
       const entityId = Number(req.params?.id || payload?.id || payload?.resumeId || payload?.offerId || 0);
       const finalAfter = payload?.status ?? payload?.result ?? afterStatus;
       const finalBefore = beforeStatus ?? payload?.beforeStatus;
       if (!entityId || finalBefore === finalAfter) return;
-      await this.prisma.auditLog.create({ data: {
+      // 审计写入失败不得影响业务响应（数据已在业务事务内提交）
+      void this.prisma.auditLog.create({ data: {
         actorId: req.user?.sub,
         action: `${entity}_STATUS_CHANGE`,
         entity,
@@ -26,7 +27,10 @@ export class AuditLogInterceptor implements NestInterceptor {
         reason: req.body?.reason,
         ipAddress: req.ip,
         candidateId: payload?.candidateId,
-      }});
+      }}).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to write audit log:', err?.message ?? err);
+      });
     }));
   }
   private detectEntity(path: string): string | null {

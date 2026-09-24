@@ -78,6 +78,7 @@ model Job {
   description     String    @db.Text
   requirements    String    @db.Text
   headcount       Int
+  hiredCount      Int       @default(0)
   status          JobStatus
   hiringManagerId Int
   hiringManager   User      @relation("HiringManagerJobs", fields: [hiringManagerId], references: [id])
@@ -111,6 +112,7 @@ model Resume {
   candidate   Candidate    @relation(fields: [candidateId], references: [id])
   job         Job          @relation(fields: [jobId], references: [id])
   interviews  Interview[]
+  offers      Offer[]
 }
 
 model Interview {
@@ -135,14 +137,17 @@ model Offer {
   id          Int         @id @default(autoincrement())
   candidateId Int
   jobId       Int
+  resumeId    Int?
   salary      Decimal
   startDate   DateTime
   status      OfferStatus
   approverId  Int
+  failReason  String?     @db.Text
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   candidate   Candidate   @relation(fields: [candidateId], references: [id])
   job         Job         @relation(fields: [jobId], references: [id])
+  resume      Resume?     @relation(fields: [resumeId], references: [id])
   approver    User        @relation("OfferApprover", fields: [approverId], references: [id])
 }
 
