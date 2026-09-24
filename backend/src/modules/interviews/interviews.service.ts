@@ -15,7 +15,11 @@ export class InterviewsService {
   }
   async create(data: any) {
     const interview = await this.prisma.interview.create({ data: { ...data, scheduledAt: new Date(data.scheduledAt), result: InterviewResult.PENDING }, include: { resume: true } });
-    await this.prisma.resume.update({ where: { id: data.resumeId }, data: { status: ResumeStatus.INTERVIEWING } });
+    // 安排面试自动进入面试阶段；已入职/已拒绝等终态简历不回退（保护录用名额事务结果）
+    const resume = await this.prisma.resume.findUnique({ where: { id: data.resumeId } });
+    if (resume && ![ResumeStatus.HIRED, ResumeStatus.REJECTED, ResumeStatus.OFFERED].includes(resume.status as ResumeStatus)) {
+      await this.prisma.resume.update({ where: { id: data.resumeId }, data: { status: ResumeStatus.INTERVIEWING } });
+    }
     return interview;
   }
   async update(id: number, data: any) {

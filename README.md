@@ -43,6 +43,12 @@ frontend/
 - 候选人 Candidate + 简历 Resume：候选人检索、投递记录、简历状态推进、看板拖拽流转。
 - 面试 Interview：日历视图、安排面试、面试官反馈、评分和结果记录。
 - Offer：创建草稿、审批、发送、接受/拒绝/撤回状态机。
+- 录用名额事务控制：
+  - 创建 Offer 要求岗位为 `OPEN`、简历处于 `INTERVIEWING`（面试阶段），同一候选人在同一职位只保留一份未结束（DRAFT/APPROVED/SENT）的 Offer。
+  - 接受录用（SENT → ACCEPTED）在数据库事务内对岗位行加锁（`SELECT … FOR UPDATE`）并重新核对剩余名额；多人争抢最后一个名额时只有一人成功，失败者返回 409 且失败原因持久化到 `Offer.failureReason`。
+  - 成功者占用名额（ACCEPTED 计数即已录用人数），简历自动转 `HIRED`；岗位招满（已录用 = headcount）后自动 `CLOSED`。
+  - 编辑岗位时 headcount 不得低于已录用人数；`CLOSED` 岗位不能重新开放，仅可归档（状态机移除 CLOSED → OPEN）。
+  - 岗位详情（列表/详情返回 `hiredCount`、`remainingSlots`）与候选人详情页展示剩余名额与 Offer 接受失败原因；面试安排与审计日志流程不受影响，自动状态变更同样写入 `audit_logs`。
 - RBAC：HR、INTERVIEWER、HIRING_MANAGER、ADMIN 四类角色；后端 `@Roles()` 控制接口，前端菜单和按钮按角色显示。
 - 数据范围：面试官请求面试列表时仅返回分配给自己的面试；招聘经理按部门过滤职位。
 - 操作审计：职位、简历、面试、Offer 状态变更写入 `audit_logs`，管理员可在候选人详情页查看状态流转历史。

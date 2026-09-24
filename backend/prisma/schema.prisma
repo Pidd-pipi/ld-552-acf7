@@ -111,6 +111,7 @@ model Resume {
   candidate   Candidate    @relation(fields: [candidateId], references: [id])
   job         Job          @relation(fields: [jobId], references: [id])
   interviews  Interview[]
+  offers      Offer[]
 }
 
 model Interview {
@@ -132,18 +133,24 @@ model Interview {
 }
 
 model Offer {
-  id          Int         @id @default(autoincrement())
-  candidateId Int
-  jobId       Int
-  salary      Decimal
-  startDate   DateTime
-  status      OfferStatus
-  approverId  Int
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  candidate   Candidate   @relation(fields: [candidateId], references: [id])
-  job         Job         @relation(fields: [jobId], references: [id])
-  approver    User        @relation("OfferApprover", fields: [approverId], references: [id])
+  id            Int         @id @default(autoincrement())
+  candidateId   Int
+  jobId         Int
+  resumeId      Int?
+  salary        Decimal
+  startDate     DateTime
+  status        OfferStatus
+  failureReason String?     @db.Text
+  approverId    Int
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  candidate     Candidate   @relation(fields: [candidateId], references: [id])
+  job           Job         @relation(fields: [jobId], references: [id])
+  resume        Resume?     @relation(fields: [resumeId], references: [id])
+  approver      User        @relation("OfferApprover", fields: [approverId], references: [id])
+
+  @@index([jobId, status])
+  @@index([candidateId, jobId])
 }
 
 model AuditLog {
